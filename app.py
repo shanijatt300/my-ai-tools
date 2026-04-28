@@ -1,96 +1,118 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import os
 
-# DeepSeek API Configuration
-# Note: Live hosting ke waqt 'DEEPSEEK_API_KEY' ko environment variables mein set karein
-API_KEY = st.sidebar.text_input("Enter DeepSeek API Key:", type="password")
-BASE_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+# --- Page UI Configuration ---
+st.set_page_config(page_title="Alishan's AI Suite", layout="wide", page_icon="🚀")
 
-def call_deepseek(prompt):
-    if not API_KEY:
-        st.error("Please enter your API Key in the sidebar!")
+# Custom CSS for Modern Look
+st.markdown("""
+    <style>
+    .stApp { background-color: #f8f9fa; }
+    .main-title { color: #1E1E1E; font-size: 40px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+    .tool-box { background: white; padding: 25px; border-radius: 15px; border: 1px solid #ddd; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- Sidebar: API Activation & Tool Selection ---
+st.sidebar.header("🔧 Control Panel")
+api_key_input = st.sidebar.text_input("Enter DeepSeek API Key:", type="password")
+
+if "active_api" not in st.session_state:
+    st.session_state.active_api = None
+
+if st.sidebar.button("Activate API Key ✅"):
+    if api_key_input:
+        st.session_state.active_api = api_key_input
+        st.sidebar.success("API Key Activated Successfully!")
+    else:
+        st.sidebar.error("Please enter a valid key.")
+
+st.sidebar.divider()
+tool_choice = st.sidebar.radio("Select a Tool:", [
+    "🔍 AI SEO Strategist", 
+    "📧 Cold Email Pro", 
+    "🛍️ Shopify Product Expert", 
+    "🏢 B2B Lead Researcher", 
+    "💻 AI Code Auditor"
+])
+
+# --- Core AI Function ---
+def get_ai_response(prompt):
+    if not st.session_state.active_api:
+        st.error("❌ API Key Active Nahi Hai! Sidebar se activate karein.")
         return None
     
+    url = "https://api.deepinfra.com/v1/openai/chat/completions"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {API_KEY}"
+        "Authorization": f"Bearer {st.session_state.active_api}"
     }
-    
     data = {
-        "model": "deepseek-ai/deepseek-coder-33b-instruct", # Best for coding and logic
+        "model": "deepseek-ai/DeepSeek-V3",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
+        "temperature": 0.6
     }
     
-    response = requests.post(BASE_URL, headers=headers, json=data)
-    return response.json()['choices'][0]['message']['content']
+    try:
+        with st.spinner("AI Generating Response..."):
+            response = requests.post(url, headers=headers, json=data)
+            return response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        return f"Error: API response mein masla hai. Check Balance/Key. ({str(e)})"
 
-# --- UI Setup ---
-st.set_page_config(page_title="AI Business Suite", layout="wide")
-st.title("🚀 Multi-Tool AI Agency Dashboard")
+# --- Main Logic for 5 Tools ---
+st.markdown(f"<div class='main-title'>{tool_choice}</div>", unsafe_allow_html=True)
 
-menu = ["SEO Strategist", "Cold Email Pro", "Shopify Expert", "Lead Researcher", "Code Auditor"]
-choice = st.sidebar.selectbox("Select Tool", menu)
-
-# --- Tool 1: AI SEO Strategist ---
-if choice == "SEO Strategist":
-    st.header("🔍 AI SEO Strategist")
-    url = st.text_input("Enter Website URL:")
-    if st.button("Analyze SEO"):
+# 1. SEO Strategist
+if tool_choice == "🔍 AI SEO Strategist":
+    url = st.text_input("Website URL (e.g., https://example.com):")
+    if st.button("Analyze Now"):
         try:
-            res = requests.get(url, timeout=10)
+            # Scraping to get site context
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            res = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(res.text, 'html.parser')
-            title = soup.title.string if soup.title else "No Title"
-            desc = soup.find("meta", attrs={"name": "description"})
-            desc = desc["content"] if desc else "No Description"
+            title = soup.title.string if soup.title else "No Title Found"
             
-            prompt = f"Analyze this website SEO: Title: {title}, Meta: {desc}. Provide an SEO Score (0-100), 5 Keyword suggestions, and an optimized Meta Title/Description."
-            report = call_deepseek(prompt)
-            st.write(report)
-        except Exception as e:
-            st.error(f"Error fetching URL: {e}")
+            prompt = f"Perform a professional SEO audit for {url}. Title: {title}. Provide SEO Score, 5 target keywords, and better Meta Description."
+            st.markdown(get_ai_response(prompt))
+        except:
+            st.error("Website scan nahi ho saki. URL check karein.")
 
-# --- Tool 2: Cold Email Pro ---
-elif choice == "Cold Email Pro":
-    st.header("📧 Cold Email Generator")
-    biz_desc = st.text_area("What service are you offering?")
-    target = st.text_input("Who is your target audience? (e.g. Real Estate Agents)")
-    if st.button("Generate Emails"):
-        prompt = f"Generate 5 personalized cold email templates for a business that does: {biz_desc}. Target audience: {target}. Use professional yet catchy tones."
-        emails = call_deepseek(prompt)
-        st.markdown(emails)
+# 2. Cold Email Pro
+elif tool_choice == "📧 Cold Email Pro":
+    service = st.text_area("Your Service (Web Dev, SEO, etc.):")
+    niche = st.text_input("Target Client (e.g., Real Estate, Gyms):")
+    if st.button("Generate 5 Emails"):
+        prompt = f"Write 5 personalized cold emails to sell {service} to {niche}. Make them short and high-converting."
+        st.markdown(get_ai_response(prompt))
 
-# --- Tool 3: Shopify Product Expert ---
-elif choice == "Shopify Expert":
-    st.header("🛍️ Shopify Product Optimizer")
-    prod_info = st.text_area("Enter basic product details:")
-    if st.button("Optimize Product"):
-        prompt = f"Create a high-converting Shopify product title, an engaging description with bullet points, and SEO alt-text for this product: {prod_info}"
-        content = call_deepseek(prompt)
-        st.markdown(content)
+# 3. Shopify Product Expert
+elif tool_choice == "🛍️ Shopify Product Expert":
+    p_info = st.text_area("Product Details:")
+    if st.button("Create Listing"):
+        prompt = f"Create a high-converting Shopify Title, Description, and SEO Alt Tags for: {p_info}"
+        st.markdown(get_ai_response(prompt))
 
-# --- Tool 4: B2B Lead Researcher ---
-elif choice == "Lead Researcher":
-    st.header("🏢 B2B Company Researcher")
-    target_url = st.text_input("Enter Company Website URL:")
-    if st.button("Research Company"):
+# 4. B2B Lead Researcher
+elif tool_choice == "🏢 B2B Lead Researcher":
+    target_site = st.text_input("Company URL to Research:")
+    if st.button("Get Insights"):
         try:
-            res = requests.get(target_url, timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            text = soup.get_text()[:2000] # Taking first 2000 chars for summary
-            prompt = f"Summarize the services of this company based on their website text: {text}. Also, predict their target client profile."
-            summary = call_deepseek(prompt)
-            st.write(summary)
-        except Exception as e:
-            st.error("Could not reach website.")
+            res = requests.get(target_site, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+            text_context = res.text[:2000]
+            prompt = f"Based on this text, what does this company do and who is their ideal client? Text: {text_context}"
+            st.markdown(get_ai_response(prompt))
+        except:
+            st.error("Site research fail ho gayi.")
 
-# --- Tool 5: AI Code Auditor ---
-elif choice == "Code Auditor":
-    st.header("💻 AI Code Auditor")
-    code_input = st.text_area("Paste your Code (HTML/CSS/Python):", height=300)
+# 5. AI Code Auditor
+elif tool_choice == "💻 AI Code Auditor":
+    code = st.text_area("Paste Code Here (Python/HTML/CSS):", height=250)
     if st.button("Audit Code"):
-        prompt = f"Review this code for bugs, performance issues, and suggest improvements: \n\n {code_input}"
-        audit_res = call_deepseek(prompt)
-        st.code(audit_res)
+        prompt = f"Analyze this code for bugs, security risks, and optimization. Suggest improvements: \n{code}"
+        st.markdown(get_ai_response(prompt))
+
+st.sidebar.markdown("---")
+st.sidebar.info("Developed by Alishan | Digital Expert")
