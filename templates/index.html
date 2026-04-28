@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Agency Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="p-10">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-10">🚀 AI Multi-Tool Dashboard</h1>
+        
+        <div class="glass p-8 mb-6">
+            <input type="password" id="apiKey" placeholder="Enter DeepSeek API Key" class="w-full p-3 rounded bg-white/20 border-none text-white placeholder-white/60 mb-4">
+            <select id="toolSelect" class="w-full p-3 rounded bg-slate-800 text-white mb-4">
+                <option value="seo">SEO Strategist (Enter URL)</option>
+                <option value="email">Cold Email Pro (Enter Service)</option>
+                <option value="shopify">Shopify Expert (Enter Product)</option>
+                <option value="lead">Lead Researcher (Enter Info)</option>
+                <option value="code">Code Auditor (Paste Code)</option>
+            </select>
+            <textarea id="userInput" rows="4" class="w-full p-3 rounded bg-white/20 border-none text-white mb-4" placeholder="Enter details here..."></textarea>
+            <button onclick="runTool()" class="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded font-bold transition">Generate Results</button>
+        </div>
+
+        <div id="output" class="glass p-8 hidden whitespace-pre-wrap"></div>
+    </div>
+
+    <script>
+        async function runTool() {
+            const btn = event.target;
+            const outputDiv = document.getElementById('output');
+            btn.innerText = "Processing...";
+            outputDiv.classList.add('hidden');
+
+            const response = await fetch('/process', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    tool: document.getElementById('toolSelect').value,
+                    input: document.getElementById('userInput').value,
+                    api_key: document.getElementById('apiKey').value
+                })
+            });
+
+            const data = await response.json();
+            btn.innerText = "Generate Results";
+            outputDiv.classList.remove('hidden');
+            outputDiv.innerText = data.result || data.error;
+        }
+    </script>
+</body>
+</html>
